@@ -16,8 +16,8 @@ module tt_fpga_top (
     input  wire        clk_25mhz,
     input  wire [6:0]  btn,
     output wire [7:0]  led,
-    input  wire        gp0,
-    output wire        gp1
+    input  wire        ftdi_txd,
+    output wire        ftdi_rxd
 );
 
     wire [7:0] ui_in;
@@ -45,8 +45,8 @@ module tt_fpga_top (
         wire uart_tx_pin;
         wire uart_rx_pin;
 
-        assign uart_rx_pin = gp0;
-        assign gp1         = uart_tx_pin;
+        assign uart_rx_pin = ftdi_txd;
+        assign ftdi_rxd    = uart_tx_pin;
 
         always @(posedge clk_25mhz) begin
             uart_rx_meta <= uart_rx_pin;
