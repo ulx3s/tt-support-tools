@@ -48,6 +48,8 @@ CommandConfig = "configure"
 
 FpgaTargetIce40Up5k = "ice40up5k"
 FpgaTargetUlx3sEcp5 = "ulx3s-ecp5"
+FpgaTargetUlx4mEcp5 = "ulx4m-ecp5"
+FpgaTargetsEcp5 = [FpgaTargetUlx3sEcp5, FpgaTargetUlx4mEcp5]
 
 
 def getParser():
@@ -99,27 +101,27 @@ def getParser():
     harden.add_argument(
         "--fpga-target",
         help="Select FPGA target",
-        choices=[FpgaTargetIce40Up5k, FpgaTargetUlx3sEcp5],
+        choices=[FpgaTargetIce40Up5k] + FpgaTargetsEcp5,
         default=FpgaTargetIce40Up5k,
     )
 
     harden.add_argument(
         "--lpf",
         metavar="FILE",
-        help="LPF constraints file for the ulx3s-ecp5 target",
+        help="LPF constraints file for ECP5 targets",
     )
 
     harden.add_argument(
         "--ecp5-device",
         choices=["12k", "25k", "45k", "85k"],
         default="85k",
-        help="ECP5 device size for ULX3S",
+        help="ECP5 device size for ULX3S/ULX4M",
     )
 
     harden.add_argument(
         "--ecp5-package",
         default="CABGA381",
-        help="ECP5 package for ULX3S",
+        help="ECP5 package for ULX3S/ULX4M",
     )
 
     harden.add_argument(
@@ -226,7 +228,7 @@ class TTFPGA:
 
     @property
     def bitstream_filename(self):
-        if self.args.command == CommandHarden and self.args.fpga_target == FpgaTargetUlx3sEcp5:
+        if self.args.command == CommandHarden and self.args.fpga_target in FpgaTargetsEcp5:
             return f"{self.get_name()}.bit"
 
         return f"{self.get_name()}.bin"
@@ -303,8 +305,10 @@ class TTFPGA:
 
         base_name = self.get_name()
 
-        if args.fpga_target == "ulx3s-ecp5":
+        if args.fpga_target == FpgaTargetUlx3sEcp5:
             top_template_name = "ulx3s/tt_fpga_top_ulx3s.v"
+        elif args.fpga_target == FpgaTargetUlx4mEcp5:
+            top_template_name = "ulx4m/tt_fpga_top_ulx4m.v"
         else:
             top_template_name = "tt_fpga_top.v"
 
@@ -319,13 +323,6 @@ class TTFPGA:
 
         sources = [os.path.join(self.source_dir, src) for src in self.sources]
         source_list = " ".join(sources)
-
-        yosys_cmd = f"yosys -l {build_dir}/01-synth.log -DSYNTH -p 'read_verilog -sv src/_tt_fpga_top.v {source_list}; synth_ice40 -top tt_fpga_top -json {build_dir}/{base_name}.json'"
-        logging.debug(yosys_cmd)
-        p = subprocess.run(yosys_cmd, shell=True)
-        if p.returncode != 0:
-            logging.error("synthesis failed")
-            exit(1)
 
         seed = os.getenv("TT_FPGA_SEED", "10")
         freq = os.getenv("TT_FPGA_FREQ", "12")
@@ -353,9 +350,9 @@ class TTFPGA:
 
             pack_cmd = f"icepack {asc_file} {bin_file}"
 
-        elif args.fpga_target == FpgaTargetUlx3sEcp5:
+        elif args.fpga_target in FpgaTargetsEcp5:
             if not args.lpf:
-                die_with_error("ulx3s-ecp5 requires --lpf path/to/ulx3s.lpf")
+                die_with_error(f"{args.fpga_target} requires --lpf path/to/{args.fpga_target}.lpf")
 
             json_file = os.path.join(build_dir, f"{base_name}.json")
             config_file = os.path.join(build_dir, f"{base_name}.config")
