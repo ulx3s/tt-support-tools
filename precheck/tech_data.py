@@ -163,6 +163,12 @@ valid_lef_port_layers = {
         "Metal5.pin": (67, 2),
         "TopMetal1.pin": (126, 2),
     },
+    "gf180mcuD": {
+        "Metal1_label": (34, 10),
+        "Metal2_label": (36, 10),
+        "Metal3_label": (42, 10),
+        "Metal4_label": (46, 10),
+    },
 }
 forbidden_layers = {
     "sky130A": [

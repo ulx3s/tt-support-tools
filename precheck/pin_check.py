@@ -1,6 +1,7 @@
 import logging
 import re
 from collections.abc import Iterable
+from dataclasses import dataclass
 from functools import partial
 from itertools import combinations
 from numbers import Real
@@ -111,17 +112,17 @@ def parse_dbu_to_nm(value: str, dbu_per_micron: int):
     return (val_dbu * 1000) // dbu_per_micron
 
 
-def pin_check(
-    gds: str, lef: str, template_def: str, toplevel: str, uses_vapwr: bool, tech: str
-):
-    logging.info("Running pin check...")
-    logging.info(f"* gds: {gds}")
-    logging.info(f"* lef: {lef}")
-    logging.info(f"* template_def: {template_def}")
-    logging.info(f"* toplevel: {toplevel}")
-    logging.info(f"* uses_vapwr: {uses_vapwr}")
+@dataclass
+class DefTemplate:
+    die_width: int
+    die_height: int
+    dbu_per_micron: int
+    pins: dict
 
-    # parse pins from template def
+
+def parse_def(template_def: str) -> DefTemplate:
+
+    # parse die size & pins from template def
     # def syntax: https://coriolis.lip6.fr/doc/lefdef/lefdefref/DEFSyntax.html
 
     units_re = re.compile(r"UNITS DISTANCE MICRONS (\S+) ;")
@@ -131,10 +132,10 @@ def pin_check(
     layer_re = re.compile(r" *\+ LAYER (\S+) \( (\S+) (\S+) \) \( (\S+) (\S+) \)")
     placed_re = re.compile(r" *\+ PLACED \( (\S+) (\S+) \) (\S+) ;")
 
-    def_pins = {}
-    dbu_per_micron = 0
     die_width = 0
     die_height = 0
+    dbu_per_micron = 0
+    pins = {}
 
     with open(template_def) as f:
         for line in f:
@@ -181,16 +182,37 @@ def pin_check(
             ox, oy, direction = match.groups()
             ox, oy = map(parse_nm, (ox, oy))
 
-            if pin_name in def_pins:
+            if pin_name in pins:
                 raise PrecheckFailure("Duplicate pin in template DEF")
 
-            def_pins[pin_name] = (layer, ox + lx, oy + by, ox + rx, oy + ty)
+            pins[pin_name] = (layer, ox + lx, oy + by, ox + rx, oy + ty)
 
         line = next(f)
         if not line.startswith("END PINS"):
             raise PrecheckFailure(
                 f"Unexpected token in template DEF: PINS {pin_count} section does not end after {pin_count} pins"
             )
+
+    return DefTemplate(
+        die_width=die_width,
+        die_height=die_height,
+        dbu_per_micron=dbu_per_micron,
+        pins=pins,
+    )
+
+
+def pin_check(
+    gds: str, lef: str, template_def: str, toplevel: str, uses_vapwr: bool, tech: str
+):
+    logging.info("Running pin check...")
+    logging.info(f"* gds: {gds}")
+    logging.info(f"* lef: {lef}")
+    logging.info(f"* template_def: {template_def}")
+    logging.info(f"* toplevel: {toplevel}")
+    logging.info(f"* uses_vapwr: {uses_vapwr}")
+
+    # parse template def
+    template = parse_def(template_def)
 
     # parse pins from user lef
     # lef syntax: https://coriolis.lip6.fr/doc/lefdef/lefdefref/LEFSyntax.html
@@ -206,7 +228,7 @@ def pin_check(
     compat_pins = {"VPWR": "VDPWR"}
 
     macro_active = False
-    pins_expected = set(def_pins).union(power_pins).union(compat_pins)
+    pins_expected = set(template.pins).union(power_pins).union(compat_pins)
     pins_seen = set()
     current_pin = None
     pin_rects = 0
@@ -232,9 +254,9 @@ def pin_check(
                 elif line.startswith("SIZE "):
                     match = size_re.match(line)
                     rx, ty = map(parse_fp3, match.groups())
-                    if (rx, ty) != (die_width, die_height):
+                    if (rx, ty) != (template.die_width, template.die_height):
                         raise PrecheckFailure(
-                            f"Inconsistent die area between LEF and template DEF: ({rx}, {ty}) != ({die_width}, {die_height})"
+                            f"Inconsistent die area between LEF and template DEF: ({rx}, {ty}) != ({template.die_width}, {template.die_height})"
                         )
                 elif line.startswith("PIN "):
                     if current_pin is not None:
@@ -300,7 +322,7 @@ def pin_check(
             lef_ports[new_pin].extend(lef_ports[old_pin])
             del lef_ports[old_pin]
 
-    for current_pin in def_pins:
+    for current_pin in template.pins:
         if current_pin not in lef_ports:
             logging.error(f"Pin {current_pin} not found in {lef}")
             lef_errors += 1
@@ -309,7 +331,7 @@ def pin_check(
                 logging.error(f"Too many rectangles for pin {current_pin} in {lef}")
                 lef_errors += 1
             lef_layer, *lef_rect = lef_ports[current_pin][0]
-            def_layer, *def_rect = def_pins[current_pin]
+            def_layer, *def_rect = template.pins[current_pin]
             if lef_layer != def_layer:
                 logging.error(
                     f"Port {current_pin} on layer {lef_layer} in {lef} but on layer {def_layer} in {template_def}"
@@ -345,12 +367,17 @@ def pin_check(
                         f"Port {current_pin} is too far from bottom edge of module: {by/1000} > 10 um"
                     )
                     lef_errors += 1
-                if die_height - ty > 10000:
+                if template.die_height - ty > 10000:
                     logging.error(
-                        f"Port {current_pin} is too far from top edge of module: {(die_height-ty)/1000} > 10 um"
+                        f"Port {current_pin} is too far from top edge of module: {(template.die_height-ty)/1000} > 10 um"
                     )
                     lef_errors += 1
-                if lx < 0 or rx > die_width or by < 0 or ty > die_height:
+                if (
+                    lx < 0
+                    or rx > template.die_width
+                    or by < 0
+                    or ty > template.die_height
+                ):
                     logging.error(
                         f"Port {current_pin} not entirely within project area in {lef}"
                     )
@@ -383,41 +410,44 @@ def pin_check(
 
     gds_errors = 0
 
-    if tech != "gf180mcuD":
-        gds_layers = valid_lef_port_layers[tech]
-        gds_layer_lookup = {j: i for i, j in gds_layers.items()}
-        polygon_list = {layer: [] for layer in gds_layers}
-        for poly in top.polygons:
-            poly_layer = (poly.layer, poly.datatype)
-            layer_name = gds_layer_lookup.get(poly_layer, None)
-            if layer_name is not None:
-                polygon_list[layer_name].append(poly)
-        merged_layers = {}
-        for layer in gds_layers:
-            merged_layers[layer] = gdstk.boolean(polygon_list[layer], [], "or")
+    gds_layers = valid_lef_port_layers[tech]
+    gds_layer_lookup = {j: i for i, j in gds_layers.items()}
+    polygon_list = {layer: [] for layer in gds_layers}
+    for poly in top.polygons:
+        poly_layer = (poly.layer, poly.datatype)
+        layer_name = gds_layer_lookup.get(poly_layer, None)
+        if layer_name is not None:
+            polygon_list[layer_name].append(poly)
+    merged_layers = {}
+    for layer in gds_layers:
+        merged_layers[layer] = gdstk.boolean(polygon_list[layer], [], "or")
 
-        for current_pin, lef_rects in sorted(lef_ports_orig.items()):
-            for layer, lx, by, rx, ty in lef_rects:
-                if layer + ".pin" not in gds_layers:
-                    raise PrecheckFailure(
-                        f"Unexpected port layer in LEF: {current_pin} is on layer {layer}"
-                    )
+    for current_pin, lef_rects in sorted(lef_ports_orig.items()):
+        for layer, lx, by, rx, ty in lef_rects:
+            if tech == "gf180mcuD":
+                pin_layer = f"{layer}_label"
+            else:
+                pin_layer = f"{layer}.pin"
+            if pin_layer not in gds_layers:
+                raise PrecheckFailure(
+                    f"Unexpected port layer in LEF: {current_pin} is on layer {layer}"
+                )
 
-                pin_ok = False
-                for poly in merged_layers[layer + ".pin"]:
-                    if poly.contain_all(
-                        ((lx + 1) / 1000, (by + 1) / 1000),
-                        ((rx - 1) / 1000, (by + 1) / 1000),
-                        ((lx + 1) / 1000, (ty - 1) / 1000),
-                        ((rx - 1) / 1000, (ty - 1) / 1000),
-                    ):
-                        pin_ok = True
+            pin_ok = False
+            for poly in merged_layers[pin_layer]:
+                if poly.contain_all(
+                    ((lx + 1) / 1000, (by + 1) / 1000),
+                    ((rx - 1) / 1000, (by + 1) / 1000),
+                    ((lx + 1) / 1000, (ty - 1) / 1000),
+                    ((rx - 1) / 1000, (ty - 1) / 1000),
+                ):
+                    pin_ok = True
 
-                if not pin_ok:
-                    logging.error(
-                        f"Port {current_pin} missing from layer {layer}.pin in {gds}"
-                    )
-                    gds_errors += 1
+            if not pin_ok:
+                logging.error(
+                    f"Port {current_pin} missing from layer {pin_layer} in {gds}"
+                )
+                gds_errors += 1
 
     if lef_errors > 0 or gds_errors > 0:
         err_list = []

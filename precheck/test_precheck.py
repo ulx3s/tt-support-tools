@@ -119,17 +119,147 @@ def gds_invalid_macro_name(tmp_path_factory: pytest.TempPathFactory):
 
 
 @pytest.fixture(scope="session")
-def gds_shapes_outside_area(tmp_path_factory: pytest.TempPathFactory):
-    """Creates a GDS with shapes outside the project area."""
-    gds_file = tmp_path_factory.mktemp("gds") / "TEST_shapes_outside_area.gds"
+def gds_def_boundary_ok(tmp_path_factory: pytest.TempPathFactory):
+    """Creates a GDS & DEF with boundary matching the project size."""
+    gds_file = tmp_path_factory.mktemp("gds") / "TEST_boundary_ok.gds"
+    layout = pya.Layout()
+    top_cell = layout.create_cell("TEST_boundary_ok")
+    met1_info = gds_layers["met1.drawing"]
+    met1 = layout.layer(met1_info.layer, met1_info.data_type)
+    rect = pya.DBox(0, 0, 1, 1)
+    top_cell.shapes(met1).insert(rect)
+    boundary_info = gds_layers["prBoundary.boundary"]
+    boundary = layout.layer(boundary_info.layer, boundary_info.data_type)
+    rect = pya.DBox(0, 0, 10, 10)
+    top_cell.shapes(boundary).insert(rect)
+    layout.write(str(gds_file))
+    def_file = tmp_path_factory.mktemp("def") / "TEST_boundary_ok.def"
+    def_data = """
+        VERSION 5.8 ;
+        DIVIDERCHAR "/" ;
+        BUSBITCHARS "[]" ;
+        DESIGN tt_um_template ;
+        UNITS DISTANCE MICRONS 1000 ;
+        DIEAREA ( 0 0 ) ( 10000 10000 ) ;
+        COMPONENTS 0 ;
+        END COMPONENTS
+        PINS 0 ;
+        END PINS
+        SPECIALNETS 0 ;
+        END SPECIALNETS
+        NETS 0 ;
+        END NETS
+        END DESIGN
+    """
+    open(def_file, "w").write(textwrap.dedent(def_data))
+    return str(gds_file), str(def_file)
+
+
+@pytest.fixture(scope="session")
+def gds_def_boundary_wrong_1(tmp_path_factory: pytest.TempPathFactory):
+    """Creates a GDS & DEF with a bounding box smaller than the project size."""
+    gds_file = tmp_path_factory.mktemp("gds") / "TEST_boundary_wrong_1.gds"
     layout = pya.Layout()
     met1_info = gds_layers["met1.drawing"]
     met1 = layout.layer(met1_info.layer, met1_info.data_type)
+    top_cell = layout.create_cell("TEST_boundary_wrong_1")
+    rect = pya.DBox(0, 0, 1, 1)
+    top_cell.shapes(met1).insert(rect)
+    boundary_info = gds_layers["prBoundary.boundary"]
+    boundary = layout.layer(boundary_info.layer, boundary_info.data_type)
+    rect = pya.DBox(0, 0, 2, 2)
+    top_cell.shapes(boundary).insert(rect)
+    layout.write(str(gds_file))
+    def_file = tmp_path_factory.mktemp("def") / "TEST_boundary_wrong_1.def"
+    def_data = """
+        VERSION 5.8 ;
+        DIVIDERCHAR "/" ;
+        BUSBITCHARS "[]" ;
+        DESIGN tt_um_template ;
+        UNITS DISTANCE MICRONS 1000 ;
+        DIEAREA ( 0 0 ) ( 10000 10000 ) ;
+        COMPONENTS 0 ;
+        END COMPONENTS
+        PINS 0 ;
+        END PINS
+        SPECIALNETS 0 ;
+        END SPECIALNETS
+        NETS 0 ;
+        END NETS
+        END DESIGN
+    """
+    open(def_file, "w").write(textwrap.dedent(def_data))
+    return str(gds_file), str(def_file)
+
+
+@pytest.fixture(scope="session")
+def gds_def_boundary_wrong_2(tmp_path_factory: pytest.TempPathFactory):
+    """Creates a GDS & DEF where the bounding box is ok but the boundary layer is wrong."""
+    gds_file = tmp_path_factory.mktemp("gds") / "TEST_boundary_wrong_2.gds"
+    layout = pya.Layout()
+    met1_info = gds_layers["met1.drawing"]
+    met1 = layout.layer(met1_info.layer, met1_info.data_type)
+    top_cell = layout.create_cell("TEST_boundary_wrong_2")
+    rect = pya.DBox(0, 0, 10, 10)
+    top_cell.shapes(met1).insert(rect)
+    boundary_info = gds_layers["prBoundary.boundary"]
+    boundary = layout.layer(boundary_info.layer, boundary_info.data_type)
+    rect = pya.DBox(0, 0, 2, 2)
+    top_cell.shapes(boundary).insert(rect)
+    layout.write(str(gds_file))
+    def_file = tmp_path_factory.mktemp("def") / "TEST_boundary_wrong_2.def"
+    def_data = """
+        VERSION 5.8 ;
+        DIVIDERCHAR "/" ;
+        BUSBITCHARS "[]" ;
+        DESIGN tt_um_template ;
+        UNITS DISTANCE MICRONS 1000 ;
+        DIEAREA ( 0 0 ) ( 10000 10000 ) ;
+        COMPONENTS 0 ;
+        END COMPONENTS
+        PINS 0 ;
+        END PINS
+        SPECIALNETS 0 ;
+        END SPECIALNETS
+        NETS 0 ;
+        END NETS
+        END DESIGN
+    """
+    open(def_file, "w").write(textwrap.dedent(def_data))
+    return str(gds_file), str(def_file)
+
+
+@pytest.fixture(scope="session")
+def gds_def_shapes_outside_area(tmp_path_factory: pytest.TempPathFactory):
+    """Creates a GDS & DEF with shapes outside the project area."""
+    gds_file = tmp_path_factory.mktemp("gds") / "TEST_shapes_outside_area.gds"
+    layout = pya.Layout()
     top_cell = layout.create_cell("TEST_shapes_outside_area")
+    met1_info = gds_layers["met1.drawing"]
+    met1 = layout.layer(met1_info.layer, met1_info.data_type)
     rect = pya.DBox(-1, 0, 0, 1)
     top_cell.shapes(met1).insert(rect)
     layout.write(str(gds_file))
-    return str(gds_file)
+    def_file = tmp_path_factory.mktemp("def") / "TEST_shapes_outside_area.def"
+    def_data = """
+        VERSION 5.8 ;
+        DIVIDERCHAR "/" ;
+        BUSBITCHARS "[]" ;
+        DESIGN tt_um_template ;
+        UNITS DISTANCE MICRONS 1000 ;
+        DIEAREA ( 0 0 ) ( 10000 10000 ) ;
+        COMPONENTS 0 ;
+        END COMPONENTS
+        PINS 0 ;
+        END PINS
+        SPECIALNETS 0 ;
+        END SPECIALNETS
+        NETS 0 ;
+        END NETS
+        END DESIGN
+    """
+    open(def_file, "w").write(textwrap.dedent(def_data))
+    return str(gds_file), str(def_file)
 
 
 @pytest.fixture(scope="session")
@@ -718,9 +848,37 @@ def test_klayout_zero_area_drc_fail(gds_zero_area: str):
 
 
 @sky130A_only
-def test_shapes_outside_area(gds_shapes_outside_area: str):
+def test_boundary_ok(gds_def_boundary_ok: tuple[str, str]):
+    gds_boundary_ok, def_boundary_ok = gds_def_boundary_ok
+    precheck.boundary_check(gds_boundary_ok, def_boundary_ok, PDK_NAME)
+
+
+@sky130A_only
+def test_boundary_wrong_1(gds_def_boundary_wrong_1: tuple[str, str]):
+    gds_boundary_wrong_1, def_boundary_wrong_1 = gds_def_boundary_wrong_1
+    with pytest.raises(
+        precheck.PrecheckFailure, match="Boundary layer doesn't cover project area"
+    ):
+        precheck.boundary_check(gds_boundary_wrong_1, def_boundary_wrong_1, PDK_NAME)
+
+
+@sky130A_only
+def test_boundary_wrong_2(gds_def_boundary_wrong_2: tuple[str, str]):
+    gds_boundary_wrong_2, def_boundary_wrong_2 = gds_def_boundary_wrong_2
+    with pytest.raises(
+        precheck.PrecheckFailure,
+        match="Missing top-level prBoundary rectangle with right size",
+    ):
+        precheck.boundary_check(gds_boundary_wrong_2, def_boundary_wrong_2, PDK_NAME)
+
+
+@sky130A_only
+def test_shapes_outside_area(gds_def_shapes_outside_area: tuple[str, str]):
+    gds_shapes_outside_area, def_shapes_outside_area = gds_def_shapes_outside_area
     with pytest.raises(precheck.PrecheckFailure, match="Shapes outside project area"):
-        precheck.boundary_check(gds_shapes_outside_area, PDK_NAME)
+        precheck.boundary_check(
+            gds_shapes_outside_area, def_shapes_outside_area, PDK_NAME
+        )
 
 
 def test_wrong_power_pins_1(verilog_lef_wrong_power_pins: tuple[str, str]):
