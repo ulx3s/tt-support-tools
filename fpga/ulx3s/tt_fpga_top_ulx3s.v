@@ -5,8 +5,8 @@
  * file: tt_fpga_top_ulx3s.v
  *
  * This is a ULX3S-specific wrapper for the TT module defined in /project.v
- * It maps the standard TT pin interface to the actual pins on the ULX3S board, 
- * and includes some simple logic to synchronize the UART RX signal and 
+ * It maps the standard TT pin interface to the actual pins on the ULX3S board,
+ * and includes some simple logic to synchronize the UART RX signal and
  * optionally loop back the UART TX for testing.
  */
 `default_nettype none
@@ -32,7 +32,7 @@ module tt_fpga_top (
     reg uart_rx_meta;
     reg uart_rx_sync;
 
-    /* The BTN0 "PWR" on the ULX3S is used for reset. 
+    /* The BTN0 "PWR" on the ULX3S is used for reset.
      * It is active-low, so we can connect it directly to rst_n. */
     assign rst_n = btn[0];
 

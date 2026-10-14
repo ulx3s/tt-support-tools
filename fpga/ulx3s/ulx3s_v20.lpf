@@ -405,6 +405,9 @@ IOBUF PORT  "gp[11]" PULLMODE=UP IO_TYPE=LVCMOS33 DRIVE=4;
 IOBUF PORT  "gn[11]" PULLMODE=UP IO_TYPE=LVCMOS33 DRIVE=4;
 IOBUF PORT  "gp[12]" PULLMODE=UP IO_TYPE=LVCMOS33 DRIVE=4;
 IOBUF PORT  "gn[12]" PULLMODE=NONE IO_TYPE=LVCMOS33;
+# GN12 may be used as an external clock input.
+# Uncomment the appropriate scalar or vector constraint and set the
+# frequency to match the clock source used by the design.
 # FREQUENCY PORT "gn[12]" 50 MHZ;
 IOBUF PORT  "gp[13]" PULLMODE=UP IO_TYPE=LVCMOS33 DRIVE=4;
 IOBUF PORT  "gn[13]" PULLMODE=UP IO_TYPE=LVCMOS33 DRIVE=4;
@@ -527,6 +530,9 @@ IOBUF PORT  "gp11" PULLMODE=UP IO_TYPE=LVCMOS33 DRIVE=4;
 IOBUF PORT  "gn11" PULLMODE=UP IO_TYPE=LVCMOS33 DRIVE=4;
 IOBUF PORT  "gp12" PULLMODE=UP IO_TYPE=LVCMOS33 DRIVE=4;
 IOBUF PORT  "gn12" PULLMODE=NONE IO_TYPE=LVCMOS33;
+# GN12 may be used as an external clock input.
+# Uncomment the appropriate scalar or vector constraint and set the
+# frequency to match the clock source used by the design.
 # FREQUENCY PORT "gn12" 50 MHZ;
 IOBUF PORT  "gp13" PULLMODE=UP IO_TYPE=LVCMOS33 DRIVE=4;
 IOBUF PORT  "gn13" PULLMODE=UP IO_TYPE=LVCMOS33 DRIVE=4;

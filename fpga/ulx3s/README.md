@@ -3,10 +3,13 @@
 Various unedited versions of the ECP5 Constraint Files from [emard/ulx3s/doc/constraints](https://github.com/emard/ulx3s/tree/master/doc/constraints).
 
 - `tt_fpga_top_ulx3s.v` is the ULX3S FPGA top-level Verilog template used by `tt_fpga.py` to generate `src/_tt_fpga_top.v`. It wraps the Tiny Tapeout user project's top module and defines the ULX3S-specific interface.
-- `ulx3s_v316.lpf` - for v3.16, v3.17, v3,18: the most recent PCF file for most ULX3S purchased recently.
+- `ulx3s_v316.lpf` - for v3.16, v3.17, v3.18: general-purpose LPF without a GN12 clock constraint.
+- `ulx3s_v316_gn12_50mhz.lpf` - same pin assignments and I/O settings, with a 50 MHz external clock constraint for GN12 (scalar `gn12` or vector `gn[12]`).
 - `ulx3s_v314.lpf` - for v3.14
 - `ulx3s_v20.lpf` - for versions 2.x .. 3.07
 - `ulx3s_v17patch.lpf` - for version 1.7
+
+Select the GN12 50 MHz variant only when the design uses GN12 as an external 50 MHz clock; otherwise use the general-purpose LPF. The clock-enabled version assumes 50 MHz, not a board-provided clock.
 
 Specify in the Tiny Tapeout step using the `with` keyword and `lpf` parameter. Values such as `tt/fpga/ulx3s/ulx3s_v20.lpf`, where `tt` is typically the already-cloned directory name of the `tt-support-tools` repo in the action.
 
