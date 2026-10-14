@@ -14,7 +14,7 @@ import klayout.db as pya
 import klayout.rdb as rdb
 import yaml
 from klayout_tools import parse_lyp_layers
-from pin_check import pin_check
+from pin_check import parse_def, pin_check
 from precheck_failure import PrecheckFailure
 from tech_data import (
     analog_pin_rects,
@@ -190,21 +190,43 @@ def klayout_checks(gds: str, expected_name: str, tech: str):
         raise PrecheckFailure(f"{layer_name} ({calma_index}) layer not found in {gds}")
 
 
-def boundary_check(gds: str, tech: str):
+def boundary_check(gds: str, template_def: str, tech: str):
     """Ensure that there are no shapes outside the project area."""
+    template = parse_def(template_def)
     lib = gdstk.read_gds(gds)
     tops = lib.top_level()
     if len(tops) != 1:
         raise PrecheckFailure("GDS top level not unique")
     top = tops[0]
-    boundary = top.copy("test_boundary")
-
+    ((lx, by), (rx, ty)) = top.bounding_box()
+    lx = int(lx * 1000)
+    by = int(by * 1000)
+    rx = int(rx * 1000)
+    ty = int(ty * 1000)
+    if ((lx, by), (rx, ty)) != ((0, 0), (template.die_width, template.die_height)):
+        if lx < 0 or by < 0 or rx > template.die_width or ty > template.die_height:
+            raise PrecheckFailure("Shapes outside project area")
+        else:
+            raise PrecheckFailure("Boundary layer doesn't cover project area")
     layers = load_layers(tech)
     layer_name = boundary_layer[tech]
     layer_info = layers[layer_name]
-    boundary.filter([(layer_info.layer, layer_info.data_type)], False)
-    if top.bounding_box() != boundary.bounding_box():
-        raise PrecheckFailure("Shapes outside project area")
+    found_boundary = False
+    for p in top.polygons:
+        if (p.layer, p.datatype) == (layer_info.layer, layer_info.data_type):
+            ((lx, by), (rx, ty)) = p.bounding_box()
+            lx = int(lx * 1000)
+            by = int(by * 1000)
+            rx = int(rx * 1000)
+            ty = int(ty * 1000)
+            if ((lx, by), (rx, ty)) == (
+                (0, 0),
+                (template.die_width, template.die_height),
+            ):
+                found_boundary = True
+                break
+    if not found_boundary:
+        raise PrecheckFailure("Missing top-level prBoundary rectangle with right size")
 
 
 def power_pin_check(verilog: str, lef: str, uses_vapwr: bool):
@@ -501,7 +523,10 @@ def main():
                 gds_file, lef_file, template_def, top_module, uses_vapwr, tech
             ),
         },
-        {"name": "Boundary check", "check": lambda: boundary_check(gds_file, tech)},
+        {
+            "name": "Boundary check",
+            "check": lambda: boundary_check(gds_file, template_def, tech),
+        },
         {
             "name": "Power pin check",
             "check": lambda: power_pin_check(verilog_file, lef_file, uses_vapwr),
