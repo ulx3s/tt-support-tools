@@ -1,3 +1,10 @@
+[![GDS Hardening Tests](../../actions/workflows/test-harden.yaml/badge.svg)](../../actions/workflows/test-harden.yaml)
+[![Precheck Tests (gf180mcu)](../../actions/workflows/test-precheck-gf180mcu.yaml/badge.svg)](../../actions/workflows/test-precheck-gf180mcu.yaml)
+[![Precheck Tests (sky130)](../../actions/workflows/test-precheck-sky130.yaml/badge.svg)](../../actions/workflows/test-precheck-sky130.yaml)
+[![Mypy Type Checking](../../actions/workflows/mypy-check.yaml/badge.svg)](../../actions/workflows/mypy-check.yaml)
+[![Python Lint](../../actions/workflows/lint-check.yaml/badge.svg)](../../actions/workflows/lint-check.yaml)
+[![Run Pytest Tests](../../actions/workflows/test.yaml/badge.svg)](../../actions/workflows/test.yaml)
+
 # Tiny Tapeout tools
 
 Tools used mostly by the Tiny Tapeout GitHub Actions
