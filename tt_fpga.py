@@ -204,7 +204,6 @@ def run_command(cmd, fail_msg):
 
 
 class TTFPGA:
-
     def __init__(self, proj: Project | None, args):
         self.project = proj
         self.args = args
@@ -228,7 +227,10 @@ class TTFPGA:
 
     @property
     def bitstream_filename(self):
-        if self.args.command == CommandHarden and self.args.fpga_target in FpgaTargetsEcp5:
+        if (
+            self.args.command == CommandHarden
+            and self.args.fpga_target in FpgaTargetsEcp5
+        ):
             return f"{self.get_name()}.bit"
 
         return f"{self.get_name()}.bin"
@@ -251,7 +253,6 @@ class TTFPGA:
 
     @property
     def source_dir(self):
-
         if self.args.source_dir:
             # command line overrides yaml
             return self.args.source_dir
@@ -264,7 +265,6 @@ class TTFPGA:
 
     @property
     def local_dir(self):
-
         if self.project is not None:
             return self.project.local_dir
 
@@ -272,7 +272,6 @@ class TTFPGA:
 
     @property
     def sources(self):
-
         if self.args.source and len(self.args.source):
             # command line overrides yaml
             return self.args.source
@@ -324,14 +323,6 @@ class TTFPGA:
         sources = [os.path.join(self.source_dir, src) for src in self.sources]
         source_list = " ".join(sources)
 
-        top_module_filename = os.path.join(self.source_dir, "_tt_fpga_top.v")
-        yosys_cmd = f"yosys -l {build_dir}/01-synth.log -DSYNTH -p 'read_verilog -sv {top_module_filename} {source_list}; synth_ice40 -top tt_fpga_top -json {build_dir}/{base_name}.json'"
-        logging.debug(yosys_cmd)
-        p = subprocess.run(yosys_cmd, shell=True)
-        if p.returncode != 0:
-            logging.error("synthesis failed")
-            exit(1)
-
         seed = os.getenv("TT_FPGA_SEED", "10")
         freq = os.getenv("TT_FPGA_FREQ", "12")
 
@@ -360,7 +351,9 @@ class TTFPGA:
 
         elif args.fpga_target in FpgaTargetsEcp5:
             if not args.lpf:
-                die_with_error(f"{args.fpga_target} requires --lpf path/to/{args.fpga_target}.lpf")
+                die_with_error(
+                    f"{args.fpga_target} requires --lpf path/to/{args.fpga_target}.lpf"
+                )
 
             json_file = os.path.join(build_dir, f"{base_name}.json")
             config_file = os.path.join(build_dir, f"{base_name}.config")
@@ -388,7 +381,9 @@ class TTFPGA:
         run_command(nextpnr_cmd, "placement failed")
         run_command(pack_cmd, "bitstream creation failed")
 
-        logging.info(f"Bitstream created successfully: {build_dir}/{self.bitstream_filename}")
+        logging.info(
+            f"Bitstream created successfully: {build_dir}/{self.bitstream_filename}"
+        )
 
 
 def yaml_file_exists(args):
@@ -396,7 +391,6 @@ def yaml_file_exists(args):
 
 
 def main():
-
     parser = getParser()
 
     args = parser.parse_args()
